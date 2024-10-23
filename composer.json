@@ -1,0 +1,27 @@
+{
+	"name": "vanacode/service",
+	"description": "Additions for laravel service",
+	"keywords": ["laravel", "vanacode", "service"],
+	"license": "MIT",
+	"authors": [
+		{
+			"name": "Davit Zeynalyan",
+			"email": "davitzeynalyan1991@gmail.com",
+			"role": "Developer"
+		}
+	],
+	"require": {
+		"laravel/framework": "10.*",
+		"vanacode/support": "*",
+		"vanacode/validator": "*",
+		"vanacode/model": "*"
+	},
+	"suggest": {
+		"vanacode/helpers": "Useful functions"
+	},
+	"autoload": {
+		"psr-4": {
+			"Vanacode\\Service\\": "src/"
+		}
+	}
+}
