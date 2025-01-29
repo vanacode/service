@@ -3,80 +3,44 @@
 namespace Vanacode\Service\Traits;
 
 use Vanacode\Service\Service;
-use Vanacode\Support\Exceptions\DynamicClassPropertyException;
 
+/**
+ * use with Vanacode\Support\Traits\DynamicClassTrait
+ */
 trait ServicePropertyTrait
 {
     protected Service $service;
 
-    protected bool $overSetService = true;
-
     /**
-     * if $service argument is null based $serviceClass argument or serviceClass() method dynamically make service
-     * then set $service property
-     * if $overSetService property is true then reset service $model and $validator property by dynamic model, validator match,
-     * reset validator $model property as well
+     * initialize service property
      *
-     * if $overSetService property is false and $model property is not set yet in $service property,
-     * then set service $model property by dynamic model match
-     * if service $validator is default validator instance just recreate it and set
-     * if validator $model property is empty set service $model property to service validator $model property
-     *
-     * @throws DynamicClassPropertyException
+     * make model instance dynamically based caller sub folders first match
+     * make folder instance dynamically based caller sub folders first match
+     * set model to validator
+     * make service instance dynamically based caller sub folders first match with created model and validator arguments
      */
-    public function initializeService(?Service $service = null, string $serviceClass = '', array $data = []): self
+    public function initializeService(?Service $service = null, array $data = []): self
     {
-        if ($this->overSetService) {
-            return $this->initializeServiceAndOverSet($service, $serviceClass, $data);
-        }
-        $this->setServiceBy($service, $serviceClass, $data);
-
-        if (! $this->service->isSetModel()) {
-            $modelClass = $data['model_class'] ?? $this->serviceModelClass();
-            $model = $this->getModelBy($modelClass, $data['model_data'] ?? []);
-            if ($model) {
-                $this->service->setModel($model);
-            }
+        if ($service) {
+            return $this->setService($service);
         }
 
-        $validatorClass = $data['validator_class'] ?? $this->serviceValidatorClass();
-        $validator = $this->service->getValidator();
-        if (get_class($validator) == $validatorClass) {
-            $validator = $this->makeValidator($validatorClass, $data['validator_data'] ?? []);
-            if (get_class($validator) != $validatorClass) {
-                $this->service->setValidator($validator);
-            }
+        $validatorData = $data['validator_data'] ?? [];
+        if (! array_key_exists('default', $validatorData)) {
+            $validatorData['default'] = static::serviceValidatorClass();
         }
 
-        if (! $validator->isSetModel() && $this->service->isSetModel()) {
-            $validator->setModel($this->service->getModel());
-        }
-
-        return $this;
-    }
-
-    /**
-     * if $service argument is null based $serviceClass argument or serviceClass() method dynamically make service
-     * then set $service property
-     * if $overSetService property is true then reset service $model and $validator property by dynamic model, validator match,
-     * reset validator $model property as well
-     *
-     * @throws DynamicClassPropertyException
-     */
-    public function initializeServiceAndOverSet(?Service $service = null, string $serviceClass = '', array $data = []): self
-    {
-        $this->setServiceBy($service, $serviceClass, $data);
-        $validatorClass = $data['validator_class'] ?? $this->serviceValidatorClass();
-        $validator = $this->makeValidator($validatorClass, $data['validator_data'] ?? []);
-        $this->service->setValidator($validator);
-
-        $modelClass = $data['model_class'] ?? $this->serviceModelClass();
-        $model = $this->getModelBy($modelClass, $data['model_data'] ?? []);
-
+        $model = $this->getModelBy($data['model_data'] ?? []);
+        $validator = $this->makeValidator($validatorData);
         if ($model) {
-            $this->service->setModel($model);
-            $this->service->getValidator()->setModel($model);
+            $validator->setModel($model);
         }
+
+        $data['parameters']['model'] = $model;
+        $data['parameters']['validator'] = $validator;
+        $this->setServiceBy($service, $data);
+        $this->service->setValidator($validator);
+        $this->service->setFullResource($this->fullResource); // TODO decide keep or not
 
         return $this;
     }
@@ -89,15 +53,15 @@ trait ServicePropertyTrait
     }
 
     /**
-     * if $service argument is null based $serviceClass argument or serviceClass() method dynamically make service
-     * then set $service property
+     * Set service property
      *
-     * @throws DynamicClassPropertyException
+     * if $service argument is not null
+     * otherwise make service instance dynamically based caller sub folders first match and set it
      */
-    public function setServiceBy(?Service $service, string $serviceClass = '', array $data = []): self
+    public function setServiceBy(?Service $service, array $data = []): self
     {
         if (is_null($service)) {
-            $service = $this->makeService($serviceClass, $data);
+            $service = $this->makeService($data);
         }
 
         return $this->setService($service);
@@ -109,32 +73,24 @@ trait ServicePropertyTrait
     }
 
     /**
-     * based $serviceClass argument or serviceClass() method dynamically make service
-     *
-     * @throws DynamicClassPropertyException
+     * make service instance dynamically based caller sub folders first match
      */
-    public function makeService(string $serviceClass = '', array $data = []): Service
+    public function makeService(array $data = []): Service
     {
-        $serviceClass = $serviceClass ?: $this->serviceClass();
         if (! array_key_exists('default', $data)) {
-            $data['default'] = $serviceClass;
+            $data['default'] = static::serviceClass();
         }
 
-        return $this->makePropertyInstance('service', $serviceClass, 'Services', 'Service', $data);
+        return $this->makeClassDynamically('Services', 'Service', $data);
     }
 
-    public function serviceClass(): string
+    public static function serviceClass(): string
     {
         return Service::class;
     }
 
-    public function serviceModelClass(): string
+    public static function serviceValidatorClass(): string
     {
-        return $this->service->modelClass();
-    }
-
-    public function serviceValidatorClass(): string
-    {
-        return $this->service->validatorClass();
+        return static::serviceClass()::validatorClass();
     }
 }
