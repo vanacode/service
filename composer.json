@@ -14,7 +14,8 @@
 		"laravel/framework": "10.*",
 		"vanacode/support": "*",
 		"vanacode/validator": "*",
-		"vanacode/model": "*"
+		"vanacode/model": "*",
+		"vanacode/resource": "*"
 	},
 	"suggest": {
 		"vanacode/helpers": "Useful functions"
